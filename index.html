@@ -2,100 +2,108 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<title>Question Game with Summary</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Student Preferences Quiz</title>
 <style>
-  body { font-family: Arial, sans-serif; margin: 20px; }
-  .question { font-size: 1.2em; margin-bottom: 10px; }
-  .answers { margin-bottom: 20px; }
-  button { display: block; margin: 5px 0; padding: 10px; font-size: 1em; cursor: pointer; }
-  img { max-width: 200px; display: block; margin: 10px 0; }
-  .summary { font-size: 1.2em; }
-  .feedback { margin-top: 15px; font-size: 1.1em; color: green; }
+  body { font-family: Arial, sans-serif; text-align: center; padding: 20px; }
+  .question-container { margin-bottom: 20px; }
+  .options { display: flex; justify-content: center; flex-wrap: wrap; gap: 20px; }
+  .option { border: 2px solid #ccc; border-radius: 10px; padding: 10px; width: 150px; cursor: pointer; }
+  .option img { width: 100px; height: 100px; object-fit: cover; }
+  .selected { border-color: green; background-color: #e0ffe0; }
+  .summary { margin-top: 20px; text-align: left; max-width: 500px; margin: auto; }
 </style>
 </head>
 <body>
 
-<h1>Learning Game</h1>
-<div id="game-container"></div>
+<h1>Getting to Know You Quiz</h1>
+<div id="quiz"></div>
 
 <script>
 const questions = [
   {
-    text: "What letter does 'cat' begin with?",
-    image: "cat.jpg",
-    answers: ["a", "b", "c", "d"],
-    correct: 2
+    question: "Which of these do you like best?",
+    options: [
+      { text: "Football", image: "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a7/Football_%28soccer_ball%29.svg/1024px-Football_%28soccer_ball%29.svg.png" },
+      { text: "Drawing", image: "https://upload.wikimedia.org/wikipedia/commons/thumb/6/6d/Line_drawing.svg/800px-Line_drawing.svg.png" },
+      { text: "Music", image: "https://upload.wikimedia.org/wikipedia/commons/thumb/4/4f/Musical_notes.svg/640px-Musical_notes.svg.png" }
+    ]
   },
   {
-    text: "What letter does 'dog' begin with?",
-    image: "dog.jpg",
-    answers: ["a", "b", "c", "d"],
-    correct: 3
+    question: "Which snack do you prefer?",
+    options: [
+      { text: "Apple", image: "https://upload.wikimedia.org/wikipedia/commons/1/15/Red_Apple.jpg" },
+      { text: "Crisps", image: "https://upload.wikimedia.org/wikipedia/commons/f/fd/Potato-Chips.jpg" },
+      { text: "Chocolate", image: "https://upload.wikimedia.org/wikipedia/commons/7/70/Chocolate_%28blue_background%29.jpg" }
+    ]
   },
   {
-    text: "What letter does 'fish' begin with?",
-    image: "fish.jpg",
-    answers: ["f", "g", "h", "i"],
-    correct: 0
-  },
-  {
-    text: "Which is a fruit?",
-    image: "apple.jpg",
-    answers: ["apple", "carrot", "potato", "onion"],
-    correct: 0
-  },
-  {
-    text: "What number comes after 4?",
-    image: "number4.jpg",
-    answers: ["3", "4", "5", "6"],
-    correct: 2
+    question: "Which place would you like to visit?",
+    options: [
+      { text: "Beach", image: "https://upload.wikimedia.org/wikipedia/commons/2/26/Beach_in_Florida.jpg" },
+      { text: "Mountains", image: "https://upload.wikimedia.org/wikipedia/commons/4/4c/Mountains_Valley_View.jpg" },
+      { text: "City", image: "https://upload.wikimedia.org/wikipedia/commons/8/88/New_York_City_skyline.jpg" }
+    ]
   }
 ];
 
 let currentQuestion = 0;
-let chosenAnswers = [];
+let answers = [];
 
-function showQuestion() {
-  const container = document.getElementById("game-container");
-  const q = questions[currentQuestion];
-  container.innerHTML = `
-    <div class="question">${q.text}</div>
-    <img src="${q.image}" alt="Question image" />
-    <div class="answers">
-      ${q.answers.map((ans, i) => `<button onclick="chooseAnswer(${i})">${ans}</button>`).join("")}
-    </div>
-  `;
+function speak(text) {
+  const utterance = new SpeechSynthesisUtterance(text);
+  speechSynthesis.speak(utterance);
 }
 
-function chooseAnswer(index) {
-  chosenAnswers.push({
-    question: questions[currentQuestion].text,
-    chosen: questions[currentQuestion].answers[index],
-    correct: questions[currentQuestion].answers[questions[currentQuestion].correct]
-  });
-  currentQuestion++;
-  if (currentQuestion < questions.length) {
-    showQuestion();
+function showQuestion(index) {
+  const quizDiv = document.getElementById("quiz");
+  quizDiv.innerHTML = "";
+
+  if (index < questions.length) {
+    const q = questions[index];
+    speak(q.question);
+
+    const questionDiv = document.createElement("div");
+    questionDiv.className = "question-container";
+    questionDiv.innerHTML = `<h2>${q.question}</h2>`;
+
+    const optionsDiv = document.createElement("div");
+    optionsDiv.className = "options";
+
+    q.options.forEach(option => {
+      const optDiv = document.createElement("div");
+      optDiv.className = "option";
+      optDiv.innerHTML = `<img src="${option.image}" alt="${option.text}"><p>${option.text}</p>`;
+      optDiv.onclick = () => {
+        answers.push(option.text);
+        currentQuestion++;
+        showQuestion(currentQuestion);
+      };
+      optionsDiv.appendChild(optDiv);
+    });
+
+    quizDiv.appendChild(questionDiv);
+    quizDiv.appendChild(optionsDiv);
+
   } else {
     showSummary();
   }
 }
 
 function showSummary() {
-  const container = document.getElementById("game-container");
-  let summaryHTML = `<h2>Great job! Here's what you chose:</h2>`;
-  summaryHTML += `<div class="summary">`;
-  chosenAnswers.forEach((entry, i) => {
-    summaryHTML += `<p><strong>Q${i+1}:</strong> ${entry.question}<br>
-      You chose: ${entry.chosen} <br>
-      Correct answer: ${entry.correct}</p>`;
-  });
-  summaryHTML += `</div>`;
-  summaryHTML += `<div class="feedback">Well done! You worked hard and tried your best. Keep practising and you’ll get even better!</div>`;
-  container.innerHTML = summaryHTML;
+  const quizDiv = document.getElementById("quiz");
+  quizDiv.innerHTML = `
+    <h2>Thank you for taking part!</h2>
+    <p>It was great to learn more about you. Here’s what you shared with us:</p>
+    <div class="summary">
+      ${answers.map((ans, i) => `<p><strong>Q${i+1}:</strong> ${questions[i].question} <br> <em>Your choice:</em> ${ans}</p>`).join("")}
+    </div>
+    <p>We’re really pleased you took the time to share your preferences. Your answers will help us get to know you better!</p>
+  `;
+  speak("Thank you for taking part. We really enjoyed learning more about you.");
 }
 
-showQuestion();
+showQuestion(currentQuestion);
 </script>
 
 </body>
