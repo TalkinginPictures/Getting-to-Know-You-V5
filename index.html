@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Getting to Know You Quiz</title>
+  <style>
+    body { font-family: sans-serif; max-width: 800px; margin: auto; padding: 20px; background-color: #f2f2f2; }
+    .question-box, .summary-box { background: white; padding: 20px; border-radius: 10px; margin-top: 20px; }
+    button { margin-top: 20px; padding: 10px 20px; font-size: 16px; }
+    .options img { max-width: 100px; max-height: 100px; margin: 10px; cursor: pointer; border: 3px solid transparent; border-radius: 10px; }
+    .selected { border-color: green; }
+  </style>
+</head>
+<body>
+  <h1>Welcome to the Quiz</h1>
+  <div id="quiz-container" class="question-box"></div>
+  <script>
+    const quizData = [
+      {
+        question: "What is your name?",
+        type: "text"
+      },
+      {
+        question: "What is your favourite colour?",
+        options: ["red", "blue", "green", "yellow", "purple", "orange"]
+      },
+      {
+        question: "What do you like to do?",
+        options: ["read", "draw", "play", "sing", "dance", "watch TV"]
+      },
+      {
+        question: "What is your favourite food?",
+        options: ["pizza", "burger", "ice cream", "chicken", "pasta", "fries"]
+      },
+      {
+        question: "How are you feeling today?",
+        options: ["happy", "sad", "excited", "angry", "scared", "tired"]
+      }
+    ];
+
+    let currentQuestion = 0;
+    const answers = {};
+    const container = document.getElementById("quiz-container");
+
+    function speak(text) {
+      const utterance = new SpeechSynthesisUtterance(text);
+      speechSynthesis.speak(utterance);
+    }
+
+    async function loadARASAACSymbol(word) {
+      const url = `https://api.arasaac.org/api/pictograms/en/search/${word}`;
+      try {
+        const res = await fetch(url);
+        const data = await res.json();
+        if (data.length > 0) {
+          return `https://static.arasaac.org/pictograms/${data[0]._id}/${data[0]._id}_500.png`;
+        }
+      } catch (e) {
+        console.error("ARASAAC error", e);
+      }
+      return "";
+    }
+
+    async function showQuestion() {
+      const q = quizData[currentQuestion];
+      container.innerHTML = `<h2>${q.question}</h2>`;
+      speak(q.question);
+
+      if (q.type === "text") {
+        const input = document.createElement("input");
+        input.type = "text";
+        input.placeholder = "Type your answer here...";
+        input.id = "textInput";
+        container.appendChild(input);
+      } else {
+        const optionsDiv = document.createElement("div");
+        optionsDiv.className = "options";
+        for (const option of q.options) {
+          const img = document.createElement("img");
+          const url = await loadARASAACSymbol(option);
+          img.src = url || "https://via.placeholder.com/100?text=" + option;
+          img.alt = option;
+          img.onclick = () => {
+            document.querySelectorAll(".options img").forEach(el => el.classList.remove("selected"));
+            img.classList.add("selected");
+            document.getElementById("nextBtn").disabled = false;
+            answers[q.question] = option;
+            speak(`Great ${answers[quizData[0].question]}, your answer is ${option}`);
+          };
+          optionsDiv.appendChild(img);
+        }
+        container.appendChild(optionsDiv);
+      }
+
+      const btn = document.createElement("button");
+      btn.id = "nextBtn";
+      btn.innerText = "Next";
+      btn.disabled = q.type !== "text";
+      btn.onclick = () => {
+        if (q.type === "text") {
+          const name = document.getElementById("textInput").value.trim();
+          if (name) {
+            answers[q.question] = name;
+            speak(`Hello ${name}, well done! Let's continue.`);
+            currentQuestion++;
+            setTimeout(showQuestion, 1000);
+          }
+        } else {
+          currentQuestion++;
+          showQuestion();
+        }
+      };
+      container.appendChild(btn);
+    }
+
+    function showSummary() {
+      container.innerHTML = `<h2>Thank you, ${answers[quizData[0].question]}! You’ve finished the quiz.</h2>`;
+      const summary = document.createElement("div");
+      summary.className = "summary-box";
+      for (const [q, a] of Object.entries(answers)) {
+        const p = document.createElement("p");
+        p.innerText = `${q} → ${a}`;
+        summary.appendChild(p);
+      }
+      container.appendChild(summary);
+    }
+
+    function startQuiz() {
+      if (currentQuestion < quizData.length) {
+        showQuestion();
+      } else {
+        showSummary();
+      }
+    }
+
+    startQuiz();
+  </script>
+</body>
+</html>
