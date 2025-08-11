@@ -1,175 +1,101 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Student Preferences Quiz</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      text-align: center;
-      margin: 20px;
-    }
-    .question-container {
-      display: none;
-    }
-    .active {
-      display: block;
-    }
-    .image-option {
-      display: inline-block;
-      margin: 10px;
-      cursor: pointer;
-      border: 2px solid transparent;
-      padding: 10px;
-      border-radius: 10px;
-      transition: border 0.3s;
-    }
-    .image-option:hover {
-      border: 2px solid #007BFF;
-    }
-    .image-option img {
-      width: 150px;
-      height: 150px;
-      object-fit: cover;
-      display: block;
-      margin: 0 auto;
-    }
-    .image-option span {
-      display: block;
-      margin-top: 5px;
-      font-weight: bold;
-    }
-    .summary {
-      display: none;
-    }
-    button {
-      padding: 10px 20px;
-      font-size: 16px;
-      margin-top: 20px;
-    }
-    .sound-toggle {
-      position: fixed;
-      top: 10px;
-      right: 10px;
-      padding: 5px 10px;
-      background: #eee;
-      border: 1px solid #ccc;
-      cursor: pointer;
-    }
-  </style>
+<meta charset="UTF-8" />
+<title>Question Game with Summary</title>
+<style>
+  body { font-family: Arial, sans-serif; margin: 20px; }
+  .question { font-size: 1.2em; margin-bottom: 10px; }
+  .answers { margin-bottom: 20px; }
+  button { display: block; margin: 5px 0; padding: 10px; font-size: 1em; cursor: pointer; }
+  img { max-width: 200px; display: block; margin: 10px 0; }
+  .summary { font-size: 1.2em; }
+  .feedback { margin-top: 15px; font-size: 1.1em; color: green; }
+</style>
 </head>
 <body>
 
-<h1>Getting to Know You Quiz</h1>
-<div class="sound-toggle" onclick="toggleSound()">🔊 Sound: On</div>
-
-<div id="quiz-container"></div>
-
-<div class="summary" id="summary">
-  <h2>Thank You!</h2>
-  <p>Well done for taking part! We’ve learned more about your likes and preferences.</p>
-  <div id="answers-list"></div>
-  <button onclick="restartQuiz()">Restart</button>
-</div>
+<h1>Learning Game</h1>
+<div id="game-container"></div>
 
 <script>
-  const questions = [
-    {
-      question: "Which is your favourite?",
-      options: [
-        { image: "https://via.placeholder.com/150/ff0000/ffffff?text=Apple", text: "Apple" },
-        { image: "https://via.placeholder.com/150/00ff00/ffffff?text=Banana", text: "Banana" },
-        { image: "https://via.placeholder.com/150/0000ff/ffffff?text=Grapes", text: "Grapes" }
-      ]
-    },
-    {
-      question: "Which pet do you like most?",
-      options: [
-        { image: "https://via.placeholder.com/150?text=Cat", text: "Cat" },
-        { image: "https://via.placeholder.com/150?text=Dog", text: "Dog" },
-        { image: "https://via.placeholder.com/150?text=Fish", text: "Fish" }
-      ]
-    }
-  ];
-
-  let currentQuestionIndex = 0;
-  let answers = [];
-  let soundOn = true;
-  const quizContainer = document.getElementById("quiz-container");
-
-  function toggleSound() {
-    soundOn = !soundOn;
-    document.querySelector(".sound-toggle").innerHTML = soundOn ? "🔊 Sound: On" : "🔇 Sound: Off";
+const questions = [
+  {
+    text: "What letter does 'cat' begin with?",
+    image: "cat.jpg",
+    answers: ["a", "b", "c", "d"],
+    correct: 2
+  },
+  {
+    text: "What letter does 'dog' begin with?",
+    image: "dog.jpg",
+    answers: ["a", "b", "c", "d"],
+    correct: 3
+  },
+  {
+    text: "What letter does 'fish' begin with?",
+    image: "fish.jpg",
+    answers: ["f", "g", "h", "i"],
+    correct: 0
+  },
+  {
+    text: "Which is a fruit?",
+    image: "apple.jpg",
+    answers: ["apple", "carrot", "potato", "onion"],
+    correct: 0
+  },
+  {
+    text: "What number comes after 4?",
+    image: "number4.jpg",
+    answers: ["3", "4", "5", "6"],
+    correct: 2
   }
+];
 
-  function speakText(text) {
-    if (soundOn && 'speechSynthesis' in window) {
-      const utterance = new SpeechSynthesisUtterance(text);
-      speechSynthesis.speak(utterance);
-    }
+let currentQuestion = 0;
+let chosenAnswers = [];
+
+function showQuestion() {
+  const container = document.getElementById("game-container");
+  const q = questions[currentQuestion];
+  container.innerHTML = `
+    <div class="question">${q.text}</div>
+    <img src="${q.image}" alt="Question image" />
+    <div class="answers">
+      ${q.answers.map((ans, i) => `<button onclick="chooseAnswer(${i})">${ans}</button>`).join("")}
+    </div>
+  `;
+}
+
+function chooseAnswer(index) {
+  chosenAnswers.push({
+    question: questions[currentQuestion].text,
+    chosen: questions[currentQuestion].answers[index],
+    correct: questions[currentQuestion].answers[questions[currentQuestion].correct]
+  });
+  currentQuestion++;
+  if (currentQuestion < questions.length) {
+    showQuestion();
+  } else {
+    showSummary();
   }
+}
 
-  function showQuestion(index) {
-    quizContainer.innerHTML = "";
-    const questionData = questions[index];
-    const questionDiv = document.createElement("div");
-    questionDiv.classList.add("question-container", "active");
+function showSummary() {
+  const container = document.getElementById("game-container");
+  let summaryHTML = `<h2>Great job! Here's what you chose:</h2>`;
+  summaryHTML += `<div class="summary">`;
+  chosenAnswers.forEach((entry, i) => {
+    summaryHTML += `<p><strong>Q${i+1}:</strong> ${entry.question}<br>
+      You chose: ${entry.chosen} <br>
+      Correct answer: ${entry.correct}</p>`;
+  });
+  summaryHTML += `</div>`;
+  summaryHTML += `<div class="feedback">Well done! You worked hard and tried your best. Keep practising and you’ll get even better!</div>`;
+  container.innerHTML = summaryHTML;
+}
 
-    const questionText = document.createElement("h2");
-    questionText.textContent = questionData.question;
-    questionDiv.appendChild(questionText);
-
-    questionData.options.forEach(option => {
-      const optionDiv = document.createElement("div");
-      optionDiv.classList.add("image-option");
-      optionDiv.onclick = () => selectAnswer(option.text);
-
-      const img = document.createElement("img");
-      img.src = option.image;
-      img.alt = option.text;
-
-      const label = document.createElement("span");
-      label.textContent = option.text;
-
-      optionDiv.appendChild(img);
-      optionDiv.appendChild(label);
-      questionDiv.appendChild(optionDiv);
-    });
-
-    quizContainer.appendChild(questionDiv);
-    speakText(questionData.question);
-  }
-
-  function selectAnswer(answer) {
-    answers.push(answer);
-    currentQuestionIndex++;
-    if (currentQuestionIndex < questions.length) {
-      showQuestion(currentQuestionIndex);
-    } else {
-      showSummary();
-    }
-  }
-
-  function showSummary() {
-    quizContainer.style.display = "none";
-    const summaryDiv = document.getElementById("summary");
-    const answersList = document.getElementById("answers-list");
-    answersList.innerHTML = "<h3>Your choices:</h3><ul>" + answers.map(a => `<li>${a}</li>`).join("") + "</ul>";
-    summaryDiv.style.display = "block";
-    speakText("Thank you for taking part! We’ve learned more about your likes and preferences.");
-  }
-
-  function restartQuiz() {
-    currentQuestionIndex = 0;
-    answers = [];
-    quizContainer.style.display = "block";
-    document.getElementById("summary").style.display = "none";
-    showQuestion(currentQuestionIndex);
-  }
-
-  // Start quiz
-  showQuestion(currentQuestionIndex);
+showQuestion();
 </script>
 
 </body>
