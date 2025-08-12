@@ -1,102 +1,144 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
-<title>Question Game with Summary</title>
-<style>
-  body { font-family: Arial, sans-serif; margin: 20px; }
-  .question { font-size: 1.2em; margin-bottom: 10px; }
-  .answers { margin-bottom: 20px; }
-  button { display: block; margin: 5px 0; padding: 10px; font-size: 1em; cursor: pointer; }
-  img { max-width: 200px; display: block; margin: 10px 0; }
-  .summary { font-size: 1.2em; }
-  .feedback { margin-top: 15px; font-size: 1.1em; color: green; }
-</style>
+  <meta charset="UTF-8">
+  <title>Meet and Greet Quiz</title>
+  <style>
+    body { font-family: Arial, sans-serif; text-align: center; padding: 20px; }
+    #quiz-container { max-width: 800px; margin: auto; }
+    .options { display: flex; flex-wrap: wrap; justify-content: center; }
+    .option {
+      margin: 10px;
+      border: 2px solid #ccc;
+      padding: 10px;
+      border-radius: 10px;
+      cursor: pointer;
+      width: 120px;
+    }
+    .option img { max-width: 100%; height: auto; }
+    .option p { margin-top: 5px; font-weight: bold; }
+    .selected { border-color: #4CAF50; }
+    #next-btn, #sound-toggle { margin-top: 20px; padding: 10px 20px; font-size: 16px; }
+  </style>
 </head>
 <body>
+  <div id="quiz-container">
+    <h1 id="question">Welcome to the Quiz</h1>
+    <div id="options" class="options"></div>
+    <input type="text" id="text-answer" style="display:none;" placeholder="Type your answer here">
+    <br>
+    <button id="next-btn" disabled>Next</button>
+    <button id="sound-toggle">Sound: On</button>
+  </div>
 
-<h1>Learning Game</h1>
-<div id="game-container"></div>
+  <script>
+    const questions = [
+      { type: 'text', question: "What's your name?" },
+      { type: 'choice', question: "What is your favourite colour?", options: ["red", "blue", "green", "yellow", "purple", "orange"] },
+      { type: 'choice', question: "What do you like to do?", options: ["swim", "read", "draw", "dance", "play", "sing"] },
+      { type: 'choice', question: "What is your favourite animal?", options: ["dog", "cat", "bird", "horse", "fish", "rabbit"] }
+    ];
 
-<script>
-const questions = [
-  {
-    text: "What letter does 'cat' begin with?",
-    image: "cat.jpg",
-    answers: ["a", "b", "c", "d"],
-    correct: 2
-  },
-  {
-    text: "What letter does 'dog' begin with?",
-    image: "dog.jpg",
-    answers: ["a", "b", "c", "d"],
-    correct: 3
-  },
-  {
-    text: "What letter does 'fish' begin with?",
-    image: "fish.jpg",
-    answers: ["f", "g", "h", "i"],
-    correct: 0
-  },
-  {
-    text: "Which is a fruit?",
-    image: "apple.jpg",
-    answers: ["apple", "carrot", "potato", "onion"],
-    correct: 0
-  },
-  {
-    text: "What number comes after 4?",
-    image: "number4.jpg",
-    answers: ["3", "4", "5", "6"],
-    correct: 2
-  }
-];
+    let currentQuestion = 0;
+    let answers = {};
+    let studentName = "";
+    let soundOn = true;
 
-let currentQuestion = 0;
-let chosenAnswers = [];
+    const questionEl = document.getElementById("question");
+    const optionsEl = document.getElementById("options");
+    const textAnswerEl = document.getElementById("text-answer");
+    const nextBtn = document.getElementById("next-btn");
+    const soundToggleBtn = document.getElementById("sound-toggle");
 
-function showQuestion() {
-  const container = document.getElementById("game-container");
-  const q = questions[currentQuestion];
-  container.innerHTML = `
-    <div class="question">${q.text}</div>
-    <img src="${q.image}" alt="Question image" />
-    <div class="answers">
-      ${q.answers.map((ans, i) => `<button onclick="chooseAnswer(${i})">${ans}</button>`).join("")}
-    </div>
-  `;
-}
+    function speak(text) {
+      if (!soundOn) return;
+      const utterance = new SpeechSynthesisUtterance(text);
+      speechSynthesis.speak(utterance);
+    }
 
-function chooseAnswer(index) {
-  chosenAnswers.push({
-    question: questions[currentQuestion].text,
-    chosen: questions[currentQuestion].answers[index],
-    correct: questions[currentQuestion].answers[questions[currentQuestion].correct]
-  });
-  currentQuestion++;
-  if (currentQuestion < questions.length) {
-    showQuestion();
-  } else {
-    showSummary();
-  }
-}
+    function loadQuestion() {
+      const q = questions[currentQuestion];
+      questionEl.textContent = q.question;
+      optionsEl.innerHTML = "";
+      textAnswerEl.style.display = "none";
+      nextBtn.disabled = true;
 
-function showSummary() {
-  const container = document.getElementById("game-container");
-  let summaryHTML = `<h2>Great job! Here's what you chose:</h2>`;
-  summaryHTML += `<div class="summary">`;
-  chosenAnswers.forEach((entry, i) => {
-    summaryHTML += `<p><strong>Q${i+1}:</strong> ${entry.question}<br>
-      You chose: ${entry.chosen} <br>
-      Correct answer: ${entry.correct}</p>`;
-  });
-  summaryHTML += `</div>`;
-  summaryHTML += `<div class="feedback">Well done! You worked hard and tried your best. Keep practising and you’ll get even better!</div>`;
-  container.innerHTML = summaryHTML;
-}
+      speak(q.question);
 
-showQuestion();
-</script>
+      if (q.type === 'text') {
+        textAnswerEl.style.display = "block";
+        textAnswerEl.value = "";
+        textAnswerEl.focus();
+        textAnswerEl.addEventListener('input', () => {
+          nextBtn.disabled = textAnswerEl.value.trim() === "";
+        });
+      } else if (q.type === 'choice') {
+        q.options.forEach(option => {
+          fetch(`https://api.arasaac.org/api/pictograms/en/search/${encodeURIComponent(option)}`)
+            .then(res => res.json())
+            .then(data => {
+              if (data.length > 0) {
+                const symbolId = data[0]._id;
+                const imageUrl = `https://static.arasaac.org/pictograms/${symbolId}/${symbolId}_500.png`;
+                const div = document.createElement('div');
+                div.className = 'option';
+                div.innerHTML = `<img src="${imageUrl}" alt="${option}"><p>${option}</p>`;
+                div.addEventListener('click', () => {
+                  document.querySelectorAll('.option').forEach(el => el.classList.remove('selected'));
+                  div.classList.add('selected');
+                  answers[q.question] = option;
+                  nextBtn.disabled = false;
+                  const confirmText = studentName ? `Great ${studentName}, your choice is ${option}.` : `Great, your choice is ${option}.`;
+                  speak(confirmText);
+                });
+                optionsEl.appendChild(div);
+              }
+            });
+        });
+      }
+    }
 
+    nextBtn.addEventListener('click', () => {
+      const q = questions[currentQuestion];
+      if (q.type === 'text') {
+        const val = textAnswerEl.value.trim();
+        if (val) {
+          answers[q.question] = val;
+          studentName = val;
+          speak(`Hello ${studentName}, well done! Let's go to the next question.`);
+        }
+      }
+      currentQuestion++;
+      if (currentQuestion < questions.length) {
+        loadQuestion();
+      } else {
+        showSummary();
+      }
+    });
+
+    soundToggleBtn.addEventListener('click', () => {
+      soundOn = !soundOn;
+      soundToggleBtn.textContent = `Sound: ${soundOn ? "On" : "Off"}`;
+    });
+
+    function showSummary() {
+      questionEl.textContent = `Thank you, ${studentName}! You’ve finished the quiz.`;
+      optionsEl.innerHTML = "";
+      textAnswerEl.style.display = "none";
+      nextBtn.style.display = "none";
+      soundToggleBtn.style.display = "none";
+
+      let summaryHtml = "<h2>Your Answers:</h2><ul>";
+      for (const [q, a] of Object.entries(answers)) {
+        summaryHtml += `<li><strong>${q}</strong>: ${a}</li>`;
+      }
+      summaryHtml += "</ul><p>It was great learning more about you today! Well done for taking part.</p>";
+      optionsEl.innerHTML = summaryHtml;
+
+      speak(`Well done ${studentName}! You’ve finished the quiz and shared some great answers.`);
+    }
+
+    loadQuestion();
+  </script>
 </body>
 </html>
