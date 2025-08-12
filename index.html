@@ -7,197 +7,142 @@
   body {
     font-family: Arial, sans-serif;
     text-align: center;
+    font-size: 1.5em;
     margin: 0;
-    background-color: #f9f9f9;
+    padding: 0;
+    background: #f0f8ff;
   }
   .container {
-    max-width: 900px;
+    max-width: 800px;
     margin: auto;
     padding: 20px;
   }
-  h1 {
-    font-size: 3em;
-    color: #333;
-  }
-  .question {
-    font-size: 2em;
-    margin: 20px 0;
-  }
-  input[type="text"] {
-    font-size: 1.5em;
-    padding: 10px;
-    width: 80%;
-    margin: 10px auto;
-    display: block;
-    border-radius: 8px;
-    border: 2px solid #ccc;
-  }
-  .answers {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: center;
-    gap: 20px;
-  }
-  .answer {
-    cursor: pointer;
-    border: 3px solid transparent;
-    border-radius: 10px;
-    padding: 10px;
-    background: white;
+  img {
     max-width: 150px;
-  }
-  .answer:hover {
-    border-color: #007bff;
-  }
-  .answer img {
-    max-width: 100%;
-    height: auto;
     display: block;
-    margin: auto;
+    margin: 10px auto;
   }
-  .answer p {
+  .option {
+    display: inline-block;
+    margin: 15px;
+    cursor: pointer;
+  }
+  .option-word {
     font-size: 1.2em;
     margin-top: 5px;
   }
+  input[type="text"] {
+    width: 80%;
+    font-size: 1.5em;
+    padding: 10px;
+  }
   button {
     font-size: 1.5em;
-    padding: 15px 25px;
-    margin-top: 20px;
-    border: none;
-    background: #007bff;
-    color: white;
-    border-radius: 8px;
-    cursor: pointer;
-  }
-  .summary {
-    font-size: 1.3em;
+    padding: 10px 20px;
     margin-top: 20px;
   }
-  .summary-name {
-    font-size: 2.5em;
-    color: green;
-    font-weight: bold;
+  #toggle-sound {
+    font-size: 1em;
+    padding: 5px 10px;
+    margin-top: 10px;
   }
-  .summary-item {
-    margin: 15px 0;
-  }
-  .summary-item img {
+  #summary img {
     max-width: 100px;
-    margin-top: 5px;
+    margin: 5px;
   }
 </style>
 </head>
 <body>
 
 <div class="container">
-  <h1 id="title">Welcome to the Quiz</h1>
-  <div id="quiz"></div>
+  <h1 id="quiz-title">Welcome to the Quiz</h1>
+  <div id="quiz-content"></div>
+  <button id="toggle-sound">🔊 Sound On</button>
 </div>
 
 <script>
 const questions = [
-  { type: "input", question: "What is your name?", key: "name" },
-  { type: "choice", question: "What is your favourite colour?", options: ["red","blue","green","yellow","purple","orange"], key: "colour" },
-  { type: "choice", question: "What is your favourite animal?", options: ["dog","cat","bird","fish","horse","rabbit"], key: "animal" },
-  { type: "choice", question: "What is your favourite food?", options: ["pizza","burger","pasta","salad","chocolate","ice cream"], key: "food" },
-  { type: "choice", question: "What is your favourite hobby?", options: ["reading","drawing","football","dancing","singing","gaming"], key: "hobby" },
-  { type: "choice", question: "What is your favourite season?", options: ["spring","summer","autumn","winter","rainy","snowy"], key: "season" }
+  { type: "text", question: "What is your name?" },
+  { type: "choice", question: "What is your favourite colour?", answers: ["red", "blue", "green", "yellow"] },
+  { type: "choice", question: "What is your favourite animal?", answers: ["dog", "cat", "rabbit", "bird"] },
+  { type: "choice", question: "What is your favourite food?", answers: ["pizza", "pasta", "apple", "banana"] }
 ];
 
 let currentQuestion = 0;
-let answers = {};
+let studentName = "";
+let answers = [];
+let soundOn = true;
 
-function fetchARASAAC(word) {
-  const url = `https://api.arasaac.org/api/pictograms/en/search/${encodeURIComponent(word)}`;
-  return fetch(url).then(res => res.json())
-    .then(data => data.length ? `https://static.arasaac.org/pictograms/${data[0]._id}/${data[0]._id}_500.png` : null)
-    .catch(() => null);
+function speak(text) {
+  if (!soundOn) return;
+  const utterance = new SpeechSynthesisUtterance(text);
+  utterance.lang = "en-GB";
+  speechSynthesis.speak(utterance);
 }
 
-function showQuestion() {
+function fetchARASAAC(word) {
+  return fetch(`https://api.arasaac.org/api/pictograms/en/search/${word}`)
+    .then(res => res.json())
+    .then(data => data.length > 0 
+      ? `https://static.arasaac.org/pictograms/${data[0]._id}/${data[0]._id}_500.png`
+      : ""
+    )
+    .catch(() => "");
+}
+
+async function showQuestion() {
   const q = questions[currentQuestion];
-  const quizDiv = document.getElementById('quiz');
-  quizDiv.innerHTML = '';
+  document.getElementById("quiz-content").innerHTML = "";
+  document.getElementById("quiz-title").textContent = q.question;
 
-  const questionElem = document.createElement('div');
-  questionElem.className = 'question';
-  questionElem.textContent = q.question;
-  quizDiv.appendChild(questionElem);
+  speak(q.question);
 
-  if (q.type === "input") {
-    const input = document.createElement('input');
+  if (q.type === "text") {
+    const input = document.createElement("input");
     input.type = "text";
-    input.id = "answerInput";
-    input.placeholder = "Type your answer here";
-    quizDiv.appendChild(input);
+    input.id = "answer-input";
+    document.getElementById("quiz-content").appendChild(input);
 
-    const btn = document.createElement('button');
+    const btn = document.createElement("button");
     btn.textContent = "Next";
     btn.onclick = () => {
-      const val = document.getElementById('answerInput').value.trim();
-      if (val) {
-        answers[q.key] = val;
-        currentQuestion++;
-        showQuestion();
+      const value = document.getElementById("answer-input").value.trim();
+      if (value) {
+        if (currentQuestion === 0) studentName = value;
+        answers.push({ question: q.question, answer: value });
+        speak(`Hello ${studentName}, well done!`);
+        nextQuestion();
       }
     };
-    quizDiv.appendChild(btn);
-
+    document.getElementById("quiz-content").appendChild(btn);
   } else if (q.type === "choice") {
-    const answersDiv = document.createElement('div');
-    answersDiv.className = 'answers';
-    quizDiv.appendChild(answersDiv);
+    for (let ans of q.answers) {
+      const opt = document.createElement("div");
+      opt.className = "option";
 
-    q.options.forEach(option => {
-      fetchARASAAC(option).then(imgUrl => {
-        const ansDiv = document.createElement('div');
-        ansDiv.className = 'answer';
-        ansDiv.onclick = () => {
-          answers[q.key] = option;
-          currentQuestion++;
-          showQuestion();
-        };
-        if (imgUrl) {
-          const img = document.createElement('img');
-          img.src = imgUrl;
-          ansDiv.appendChild(img);
-        }
-        const label = document.createElement('p');
-        label.textContent = option;
-        ansDiv.appendChild(label);
-        answersDiv.appendChild(ansDiv);
-      });
-    });
+      const img = document.createElement("img");
+      img.src = "";
+      fetchARASAAC(ans).then(url => img.src = url);
+
+      const word = document.createElement("div");
+      word.className = "option-word";
+      word.textContent = ans;
+
+      opt.appendChild(img);
+      opt.appendChild(word);
+      opt.onclick = () => {
+        answers.push({ question: q.question, answer: ans });
+        speak(`Great ${studentName}, your ${q.question.toLowerCase()} is ${ans}.`);
+        nextQuestion();
+      };
+
+      document.getElementById("quiz-content").appendChild(opt);
+    }
   }
 }
 
-function showSummary() {
-  const quizDiv = document.getElementById('quiz');
-  quizDiv.innerHTML = `<div class="summary-name">Well done, ${answers.name}!</div>`;
-  
-  const summaryText = document.createElement('div');
-  summaryText.className = 'summary';
-  summaryText.innerHTML = `<p>It’s been great getting to know you. Here’s what you shared with us today:</p>`;
-  quizDiv.appendChild(summaryText);
-
-  Object.keys(answers).forEach(key => {
-    if (key === "name") return;
-    const item = document.createElement('div');
-    item.className = 'summary-item';
-    item.innerHTML = `<strong>${questions.find(q => q.key === key).question}</strong><br>${answers[key]}`;
-    fetchARASAAC(answers[key]).then(imgUrl => {
-      if (imgUrl) {
-        const img = document.createElement('img');
-        img.src = imgUrl;
-        item.appendChild(document.createElement('br'));
-        item.appendChild(img);
-      }
-    });
-    quizDiv.appendChild(item);
-  });
-}
-
-function nextStep() {
+function nextQuestion() {
+  currentQuestion++;
   if (currentQuestion < questions.length) {
     showQuestion();
   } else {
@@ -205,8 +150,32 @@ function nextStep() {
   }
 }
 
+async function showSummary() {
+  document.getElementById("quiz-title").textContent = `Well done, ${studentName}!`;
+  const summaryDiv = document.createElement("div");
+  summaryDiv.id = "summary";
+
+  for (let ansObj of answers) {
+    const item = document.createElement("div");
+    item.innerHTML = `<strong>${ansObj.question}</strong><br>${ansObj.answer}<br>`;
+    const img = document.createElement("img");
+    img.src = await fetchARASAAC(ansObj.answer);
+    item.appendChild(img);
+    summaryDiv.appendChild(item);
+  }
+
+  document.getElementById("quiz-content").innerHTML = "";
+  document.getElementById("quiz-content").appendChild(summaryDiv);
+
+  speak(`Well done ${studentName}, you have finished the quiz.`);
+}
+
+document.getElementById("toggle-sound").onclick = () => {
+  soundOn = !soundOn;
+  document.getElementById("toggle-sound").textContent = soundOn ? "🔊 Sound On" : "🔇 Sound Off";
+};
+
 showQuestion();
 </script>
-
 </body>
 </html>
